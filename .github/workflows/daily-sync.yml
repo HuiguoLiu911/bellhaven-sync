@@ -1,0 +1,62 @@
+# Daily Bellhaven -> CRM sync. Proposes changes only; nothing is written to the CRM here.
+# Writes happen exclusively from the review app after a human approves.
+#
+# NOTE: the supported production setup is deploy/crontab on the host that runs the review app,
+# because the pipeline and the app must share one decision queue (data/sync.db). This workflow is
+# the CI/hosted variant: it keeps the queue in the Actions cache, so the review app would have to
+# run against that same file (or both would point SYNC_DB at shared storage / a real database).
+name: bellhaven-daily-sync
+
+on:
+  schedule:
+    # 6am Central (DST-aware), before reps start their day.
+    # If `timezone` is unavailable on your GitHub plan/runner, use "0 11 * * *" (UTC) instead.
+    - cron: "0 6 * * *"
+      timezone: "America/Chicago"
+  workflow_dispatch: {}
+
+concurrency:              # never let two runs touch the queue at once
+  group: bellhaven-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -q tests
+
+      # The proposal queue (data/sync.db) is the memory that makes re-runs safe: it records
+      # what was already approved/rejected. Restore the latest copy, run, save a new copy.
+      # (In production this would be a shared Postgres the review app also uses.)
+      - name: Restore queue state
+        uses: actions/cache/restore@v4
+        with:
+          path: data/sync.db
+          key: sync-db-${{ github.run_id }}
+          restore-keys: sync-db-
+
+      - name: Scrape, match, queue proposals
+        shell: bash   # bash -eo pipefail: a failing pipeline must fail the job even though it is piped to tee
+        env:
+          CRM_TOKEN: ${{ secrets.CRM_TOKEN }}
+        run: python -m bellhaven.pipeline | tee run-summary.json
+
+      - name: Save queue state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: data/sync.db
+          key: sync-db-${{ github.run_id }}
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: run-summary
+          path: run-summary.json

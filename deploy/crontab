@@ -1,0 +1,8 @@
+# Supported schedule: run on the same host as the review app so both share data/sync.db
+# (the decision memory that makes re-runs safe).
+# 6:00am Central daily. CRON_TZ is honoured by cronie (RHEL/Fedora/Arch); on Debian/Ubuntu's
+# Vixie cron, set the host timezone to America/Chicago or use "0 11 * * *" (UTC, CDT) instead.
+# flock prevents overlapping runs (the pipeline also refuses to start while another run is active).
+CRON_TZ=America/Chicago
+MAILTO=crm-ops@example.com
+0 6 * * *  cd /opt/bellhaven-sync && mkdir -p logs && flock -n /tmp/bellhaven-sync.lock .venv/bin/python -m bellhaven.pipeline >> logs/pipeline.log 2>&1 || echo "bellhaven-sync failed, see logs/pipeline.log"
