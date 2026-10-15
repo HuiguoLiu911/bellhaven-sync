@@ -371,7 +371,7 @@
 
 ## #42 [update_fields] Update name on Arbors at Bellhaven Dayton
 
-**Status:** pending
+**Status:** rejected (2026-10-15 02:22:29Z) | reviewer note: punctuation-only, not worth churning the record
 
 **Reasoning:** Correct parent already; website shows newer values for: name.
 
@@ -446,7 +446,7 @@
 
 ## #14 [update_fields] Update name on Riverbend Manor Care Center
 
-**Status:** pending
+**Status:** applied (2026-10-15 02:22:14Z) | reviewer note: Same address (150 River St, Chagrin Falls) and administrator Dale Mabry is a contact: outdated name.
 
 **Reasoning:** Correct parent already; website shows newer values for: name.
 
